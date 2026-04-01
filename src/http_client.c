@@ -1,6 +1,7 @@
 #include "http_client.h"
 #include "config.h"
 #include "pico/stdlib.h"
+#include "pico/cyw43_arch.h"
 #include "lwip/tcp.h"
 #include "lwip/dns.h"
 #include "lwip/ip_addr.h"
