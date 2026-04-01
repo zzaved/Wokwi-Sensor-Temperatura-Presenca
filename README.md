@@ -1,0 +1,1 @@
+# Wokwi-Sensor-Temperatura-Presenca
