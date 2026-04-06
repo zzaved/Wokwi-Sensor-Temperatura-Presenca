@@ -76,17 +76,6 @@ cd pico-sdk && git submodule update --init
 export PICO_SDK_PATH=/caminho/para/pico-sdk
 ```
 
-### Build
-
-```bash
-git clone <este-repo>
-cd pico-telemetria
-
-mkdir build && cd build
-cmake ..
-make -j4
-```
-
 O arquivo `build/pico_telemetria.uf2` é gerado para gravação no hardware físico.
 O arquivo `build/pico_telemetria.elf` é usado pelo Wokwi para simulação.
 
