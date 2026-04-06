@@ -91,6 +91,69 @@ O arquivo `build/pico_telemetria.uf2` é gerado para gravação no hardware fís
 O arquivo `build/pico_telemetria.elf` é usado pelo Wokwi para simulação.
 
 
+## Arquitetura Cloud
+
+O backend da Atividade 1 foi implantado na nuvem usando serviços gratuitos:
+
+```
+Pico W / curl
+     │ HTTP POST /telemetria
+     ▼
+[Relay local :8080]          ← go run ./cmd/relay/main.go
+     │ HTTPS
+     ▼
+API — Cloud Run              ← telemetria-api-338668699937.us-central1.run.app
+     │ amqps://
+     ▼
+RabbitMQ — CloudAMQP         ← Little Lemur (free tier)
+     │
+     ▼
+Worker — Cloud Run           ← consome fila e persiste
+     │ postgresql://
+     ▼
+PostgreSQL — Neon            ← neondb (free tier)
+```
+
+### Serviços utilizados (todos free tier)
+
+| Serviço | Plataforma | Observação |
+|---|---|---|
+| API Go | Google Cloud Run | 2M req/mês grátis |
+| Worker Go | Google Cloud Run | consumer da fila |
+| Message broker | CloudAMQP — Little Lemur | 1M mensagens/mês grátis |
+| Banco de dados | Neon PostgreSQL | 0.5 GB grátis |
+
+### Por que o relay local?
+
+O firmware do Pico W usa TCP puro (lwIP raw API) sem suporte a TLS. O Cloud Run aceita apenas HTTPS. O relay resolve isso: aceita HTTP na porta 8080 e encaminha via HTTPS para o Cloud Run internamente.
+
+O simulador Wokwi requer licença paga para o network bridge (que conecta `host.wokwi.internal` ao localhost). Em hardware físico real, o Pico W se conectaria diretamente ao relay.
+
+### Executando com relay
+
+```bash
+# Terminal 1 — relay HTTP → Cloud Run
+cd iot-sensor-go
+go run ./cmd/relay/main.go
+
+# Terminal 2 — monitorar banco em tempo real
+watch -n 3 psql "postgresql://..." -c "SELECT tipo_sensor, valor_coletado, criado_em FROM telemetria_sensores ORDER BY criado_em DESC LIMIT 5;"
+```
+
+### Testando o pipeline completo via curl
+
+```bash
+# Envia leitura de temperatura
+curl -s -X POST https://telemetria-api-338668699937.us-central1.run.app/telemetria \
+  -H "Content-Type: application/json" \
+  -d '{"id_dispositivo":42,"tipo_sensor":"temperatura","natureza_leitura":"analogica","valor_coletado":"26.50"}'
+
+# Envia leitura de presença
+curl -s -X POST https://telemetria-api-338668699937.us-central1.run.app/telemetria \
+  -H "Content-Type: application/json" \
+  -d '{"id_dispositivo":42,"tipo_sensor":"presenca","natureza_leitura":"discreta","valor_coletado":"1"}'
+```
+
 ## Simulação no Wokwi
 
 1. Instale a extensão **Wokwi** no VS Code
